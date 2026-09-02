@@ -1,0 +1,38 @@
+name: preflight
+on: [push, workflow_dispatch]
+jobs:
+  linux-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      - run: |
+          make -f Makefile.libretro platform=unix -j$(nproc) > build.log 2>&1 || { echo "=== FAILED ==="; grep -nE "error:|Error [0-9]|not available" build.log | head -30; exit 1; }
+          ls -la *_libretro.so
+  windows-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y g++-mingw-w64-x86-64-posix
+      - run: |
+          make -f Makefile.libretro platform=win CC=x86_64-w64-mingw32-gcc-posix CXX=x86_64-w64-mingw32-g++-posix -j$(nproc) > build.log 2>&1 || { echo "=== FAILED ==="; grep -nE "error:|Error [0-9]|No such file" build.log | head -30; exit 1; }
+          ls -la *_libretro.dll
+  osx-arm64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          make -f Makefile.libretro platform=osx -j$(sysctl -n hw.ncpu) > build.log 2>&1 || { echo "=== FAILED ==="; grep -nE "error:|Error [0-9]|No such file" build.log | head -30; exit 1; }
+          ls -la *_libretro.dylib; lipo -info *_libretro.dylib
+  android-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          export ANDROID_NDK_ROOT="$ANDROID_NDK_LATEST_HOME"
+          export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          export ANDROID_NDK_LLVM="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64"
+          export ANDROID_NDK_CLANG="$ANDROID_NDK_LLVM"
+          export ANDROID_NDK_ARM64="$ANDROID_NDK_LLVM"
+          make -f Makefile.libretro platform=android-arm64 -j$(nproc) > build.log 2>&1 || { echo "=== FAILED ==="; grep -nE "error:|Error [0-9]|No such file" build.log | head -30; exit 1; }
+          ls -la *_libretro_android.so
