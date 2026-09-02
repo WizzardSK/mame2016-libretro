@@ -5,6 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libasound2-dev libpulse-dev
       - name: build the mame2016 core
         run: |
           make -f Makefile.libretro platform=unix PYTHON_EXECUTABLE=python3 -j$(nproc) > build.log 2>&1 || { echo "=== FAILED ==="; grep -nE "error:|error " build.log | head -40; echo "--- tail ---"; grep -vE "^(g\+\+|gcc|ar |Compiling|Archiving)" build.log | tail -25; exit 1; }
