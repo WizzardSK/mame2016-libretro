@@ -1,0 +1,13 @@
+name: preflight
+on: [push, workflow_dispatch]
+jobs:
+  linux-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build the mame2016 core
+        run: |
+          make -f Makefile.libretro platform=unix -j$(nproc) > build.log 2>&1 || { echo "=== FAILED ==="; tail -80 build.log; exit 1; }
+          tail -5 build.log
+          ls -la *_libretro.so
+          file *_libretro.so
