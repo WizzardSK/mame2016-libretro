@@ -1,0 +1,77 @@
+# Fork-only preflight for the Windows and 32-bit plumbing in
+# Makefile.libretro. linux-x64 is the control: it is the one configuration
+# that already worked on the buildbot, so it has to keep working.
+name: preflight (windows + 32-bit)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - preflight-**
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 200
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            packages: mingw-w64 gcc-mingw-w64-x86-64-posix g++-mingw-w64-x86-64-posix
+            artifact: mame2016_libretro.dll
+            env_platform: win64
+            env_arch: x86_64
+            env_msystem: MINGW64
+            cc: x86_64-w64-mingw32-gcc-posix
+            cxx: x86_64-w64-mingw32-g++-posix
+            ar: x86_64-w64-mingw32-ar
+            windres: x86_64-w64-mingw32-windres
+          - name: windows-i686
+            packages: mingw-w64 gcc-mingw-w64-i686-posix g++-mingw-w64-i686-posix
+            artifact: mame2016_libretro.dll
+            env_platform: win32
+            env_arch: x86
+            env_msystem: MINGW32
+            cc: i686-w64-mingw32-gcc-posix
+            cxx: i686-w64-mingw32-g++-posix
+            ar: i686-w64-mingw32-ar
+            windres: i686-w64-mingw32-windres
+          - name: linux-i686
+            packages: gcc-multilib g++-multilib
+            artifact: mame2016_libretro.so
+            env_platform: unix
+            env_arch: x86
+          - name: linux-x64
+            packages: build-essential
+            artifact: mame2016_libretro.so
+            env_platform: unix
+            env_arch: ""
+    name: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          if [ "${{ matrix.env_arch }}" = "x86" ] && [ "${{ matrix.env_platform }}" = "unix" ]; then
+            sudo dpkg --add-architecture i386
+          fi
+          sudo apt-get update
+          sudo apt-get install -y python3 ${{ matrix.packages }}
+
+      - name: Build
+        env:
+          platform: ${{ matrix.env_platform }}
+          ARCH: ${{ matrix.env_arch }}
+          MSYSTEM: ${{ matrix.env_msystem }}
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+          AR: ${{ matrix.ar }}
+          WINDRES: ${{ matrix.windres }}
+        run: |
+          make -f Makefile.libretro -j$(nproc)
+
+      - name: Check what came out
+        run: |
+          ls -l "${{ matrix.artifact }}"
+          file "${{ matrix.artifact }}"
