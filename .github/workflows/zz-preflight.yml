@@ -1,0 +1,29 @@
+name: buildbot preflight
+on: [push, workflow_dispatch]
+
+jobs:
+  osx-arm64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure (replays the osx-arm64 template)
+        run: |
+          export LIBRETRO_APPLE_ISYSROOT=$(xcodebuild -version -sdk macosx Path)
+          export CROSS_COMPILE=1 LIBRETRO_APPLE_PLATFORM=arm64-apple-macos11.0
+          uname -mps
+          make -f Makefile.libretro platform=osx arch=arm CC=clang CXX=clang++ REGENIE=1 -j3 2>&1 | tee build.log | tail -5 &
+          sleep 300
+          kill %1 2>/dev/null || true
+          grep -m1 "genie --distro" build.log || true
+      - name: Assert the build is native arm64
+        run: |
+          grep -q -- "--PLATFORM='arm64'" build.log
+          ! grep -q "macosx_x86" build.log
+          test -f build/projects/libretro/mame/gmake-osx/Makefile
+          grep -c "^  libretro$\|libretro$" build/projects/libretro/mame/gmake-osx/Makefile | head -1
+          grep -m1 "config=libretro" build.log
+      - name: Build libuv, the target that failed before
+        run: |
+          make -C build/projects/libretro/mame/gmake-osx config=libretro uv -j3 2>&1 | tail -20
+      - name: Show a compile line
+        run: grep -m1 -- "-DPTR64" build.log || grep -m1 "clang++" build.log
