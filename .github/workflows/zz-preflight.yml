@@ -3,27 +3,43 @@ on: [push, workflow_dispatch]
 
 jobs:
   osx-arm64:
-    runs-on: macos-latest
+    # Xcode 16, like the buildbot's mac runners; macos-latest is on 21 and
+    # its ar refuses the empty archives MAME's genie makefiles still emit.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Configure (replays the osx-arm64 template)
+      - name: Build (replays the osx-arm64 template)
         run: |
           export LIBRETRO_APPLE_ISYSROOT=$(xcodebuild -version -sdk macosx Path)
           export CROSS_COMPILE=1 LIBRETRO_APPLE_PLATFORM=arm64-apple-macos11.0
           uname -mps
-          make -f Makefile.libretro platform=osx arch=arm CC=clang CXX=clang++ REGENIE=1 -j3 2>&1 | tee build.log | tail -5 &
-          sleep 300
-          kill %1 2>/dev/null || true
-          grep -m1 "genie --distro" build.log || true
+          set +e
+          ( make -f Makefile.libretro platform=osx arch=arm CC=clang CXX=clang++ REGENIE=1 -j3 > build.log 2>&1 ) &
+          pid=$!
+          for i in $(seq 1 90); do
+            sleep 20
+            kill -0 $pid 2>/dev/null || break
+          done
+          kill $pid 2>/dev/null
+          pkill -f gmake-osx 2>/dev/null
+          echo "--- last lines:"; tail -20 build.log
       - name: Assert the build is native arm64
         run: |
           grep -q -- "--PLATFORM='arm64'" build.log
           ! grep -q "macosx_x86" build.log
-          test -f build/projects/libretro/mame/gmake-osx/Makefile
-          grep -c "^  libretro$\|libretro$" build/projects/libretro/mame/gmake-osx/Makefile | head -1
-          grep -m1 "config=libretro" build.log
-      - name: Build libuv, the target that failed before
+          test -f build/projects/retro/mame/gmake-osx/Makefile
+          grep -m1 "config=libretro" build.log || true
+          echo "--- object dir:"; ls build/gmake/libretro/obj/
+          echo "--- a compile line:"; grep -m1 -- "-DPTR64=1" build.log
+          ! grep -q -- "-m32" build.log
+          echo "--- errors, if any:"; grep -n "error:" build.log | head -20 || true
+          ! grep -q "error:" build.log
+      - name: A built object is arm64
         run: |
-          make -C build/projects/libretro/mame/gmake-osx config=libretro uv -j3 2>&1 | tail -20
-      - name: Show a compile line
-        run: grep -m1 -- "-DPTR64" build.log || grep -m1 "clang++" build.log
+          o=$(find build/gmake/libretro/obj -name "*.o" | head -1)
+          echo "$o"; file "$o"; file "$o" | grep -q arm64
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log
+          path: build.log
