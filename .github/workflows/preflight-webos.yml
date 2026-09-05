@@ -1,0 +1,36 @@
+# Fork-only: does mame2016 build for webOS the way libretro/mame already does?
+name: preflight (webos armv7a)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - preflight-**
+
+jobs:
+  webos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - name: the webOS SDK the buildbot image carries
+        run: |
+          curl -sSL -o /tmp/sdk.tar.gz \
+            https://github.com/openlgtv/buildroot-nc4/releases/download/webos-a38c582/arm-webos-linux-gnueabi_sdk-buildroot-x86_64.tar.gz
+          sudo mkdir -p /developer
+          sudo tar xzf /tmp/sdk.tar.gz -C /developer
+          ls /developer
+          sudo /developer/arm-webos-linux-gnueabi_sdk-buildroot/relocate-sdk.sh
+      - name: what .libretro-webos-armv7a-make-default runs
+        run: |
+          . /developer/arm-webos-linux-gnueabi_sdk-buildroot/environment-setup
+          export CC_FOR_BUILD=/usr/bin/gcc CXX_FOR_BUILD=/usr/bin/g++
+          echo "CROSS_COMPILE=$CROSS_COMPILE"
+          make -f Makefile.libretro platform=unix -j$(nproc)
+      - name: what came out
+        run: |
+          . /developer/arm-webos-linux-gnueabi_sdk-buildroot/environment-setup
+          ls -l mame2016_libretro.so
+          file mame2016_libretro.so
+          arm-webos-linux-gnueabi-strip --strip-unneeded mame2016_libretro.so
+          ls -l mame2016_libretro.so
