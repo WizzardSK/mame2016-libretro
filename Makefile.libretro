@@ -166,11 +166,16 @@ ifneq (,$(findstring android,$(platform)))
 	# The ARM ABIs. MAME reads all of this off the build host, which is x86_64
 	# here: PLATFORM is what GENie turns into the PTR64 define and the cast
 	# alignment warnings, ARCHITECTURE would send it looking for an x86 target,
-	# and its inline assembly and recompiler are x86 only.
+	# and its inline assembly is x86 only.
 	ifneq ($(ANDROID_GENIE_PLATFORM),)
-		FORCE_DRC_C_BACKEND = 1
 		ANDROID_ARCH_FLAGS = ARCHITECTURE= NOASM=1 PLATFORM=$(ANDROID_GENIE_PLATFORM)
 	endif
+
+	# The C recompiler backend everywhere on Android: there is no ARM one in
+	# this MAME, and the x86 one does not compile against bionic - its register
+	# enums collide with the REG_* that <sys/ucontext.h> puts in the global
+	# namespace ("reference to 'REG_RDI' is ambiguous").
+	FORCE_DRC_C_BACKEND = 1
 	# bionic has no libpthread - it is part of libc - but the retro OSD links
 	# it by name. An empty archive on the link path answers that; the build
 	# target below makes it.
