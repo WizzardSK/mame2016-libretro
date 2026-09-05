@@ -24,7 +24,7 @@ jobs:
         run: |
           export NDK_ROOT=$ANDROID_NDK_LATEST_HOME
           export ANDROID_NDK_LLVM="${NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64"
-          make -f Makefile.libretro -j$(nproc) platform=${{ matrix.platform }} 2>&1 | tail -40
+          make -f Makefile.libretro -j$(nproc) platform=${{ matrix.platform }} 2>&1 | tail -150
       - name: what came out
         run: |
           ls -l mame2016_libretro_android.so

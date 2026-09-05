@@ -144,15 +144,17 @@ endif
 ifneq (,$(findstring android,$(platform)))
 	ANDROID_API ?= 21
 	ANDROID_NDK_LLVM ?= $(NDK_ROOT)/toolchains/llvm/prebuilt/linux-x86_64
+	# PTR64 is deliberately left alone on the ARM ABIs: MAME turns it into
+	# ARCHITECTURE=_x64/_x86 and would go looking for an x86 target, which is
+	# also how the aarch64 Linux job is configured. There is no ARM
+	# recompiler in this MAME either, so those two interpret.
 	ifeq ($(platform),android-arm)
 		ANDROID_TRIPLE = armv7a-linux-androideabi
 		LIBRETRO_CPU = arm
-		PTR64 = 0
 		FORCE_DRC_C_BACKEND = 1
 	else ifeq ($(platform),android-arm64)
 		ANDROID_TRIPLE = aarch64-linux-android
-		LIBRETRO_CPU = arm64
-		PTR64 = 1
+		LIBRETRO_CPU = aarch64
 		FORCE_DRC_C_BACKEND = 1
 	else ifeq ($(platform),android-x86)
 		ANDROID_TRIPLE = i686-linux-android
