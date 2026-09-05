@@ -1,0 +1,33 @@
+# Fork-only: the four Android ABIs, built the way the android-make template
+# does - it exports the NDK paths and passes the ABI in platform.
+name: preflight (android)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - preflight-**
+      - android-**
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [android-arm, android-arm64, android-x86, android-x86_64]
+    name: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: build
+        run: |
+          export NDK_ROOT=$ANDROID_NDK_LATEST_HOME
+          export ANDROID_NDK_LLVM="${NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64"
+          make -f Makefile.libretro -j$(nproc) platform=${{ matrix.platform }} 2>&1 | tail -40
+      - name: what came out
+        run: |
+          ls -l mame2016_libretro_android.so
+          file mame2016_libretro_android.so
+          ${ANDROID_NDK_LATEST_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip mame2016_libretro_android.so
+          ls -l mame2016_libretro_android.so
