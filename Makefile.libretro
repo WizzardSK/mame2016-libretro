@@ -171,11 +171,15 @@ ifneq (,$(findstring android,$(platform)))
 		FORCE_DRC_C_BACKEND = 1
 		ANDROID_ARCH_FLAGS = ARCHITECTURE= NOASM=1 PLATFORM=$(ANDROID_GENIE_PLATFORM)
 	endif
+	# bionic has no libpthread - it is part of libc - but the retro OSD links
+	# it by name. An empty archive on the link path answers that; the build
+	# target below makes it.
+	ANDROID_STUB_DIR = $(CURDIR)/obj/android-stubs
 	ANDROID_CC = $(ANDROID_NDK_LLVM)/bin/$(ANDROID_TRIPLE)$(ANDROID_API)-clang
 	# CROSS_BUILD keeps the host compiler for the tools MAME builds and runs
 	# during the build - m68kmake and friends - and gives GENie the NDK's for
 	# everything that ends up in the core.
-	ANDROID_OVERRIDES = CROSS_BUILD=1 $(ANDROID_ARCH_FLAGS) OVERRIDE_CC="$(ANDROID_CC)" OVERRIDE_CXX="$(ANDROID_CC)++" OVERRIDE_AR="$(ANDROID_NDK_LLVM)/bin/llvm-ar"
+	ANDROID_OVERRIDES = CROSS_BUILD=1 $(ANDROID_ARCH_FLAGS) LDOPTS="-L$(ANDROID_STUB_DIR)" OVERRIDE_CC="$(ANDROID_CC)" OVERRIDE_CXX="$(ANDROID_CC)++" OVERRIDE_AR="$(ANDROID_NDK_LLVM)/bin/llvm-ar"
 	CORE_SUFFIX = _android
 endif
 
@@ -304,6 +308,10 @@ endif
 all: build
 
 build:
+ifneq ($(ANDROID_STUB_DIR),)
+	mkdir -p $(ANDROID_STUB_DIR)
+	$(ANDROID_NDK_LLVM)/bin/llvm-ar crs $(ANDROID_STUB_DIR)/libpthread.a
+endif
 	$(MAKE) $(BUILDFLAGS) $(PLATFLAGS) $(TARGETFLAGS)
 ifneq ($(CORE_SUFFIX),)
 	mv mame2016_libretro.so mame2016_libretro$(CORE_SUFFIX).so
