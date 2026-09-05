@@ -142,7 +142,9 @@ endif
 # on - host g++, host pointer size, the x86-64 recompiler - and naming the
 # result for Linux, which is why the jobs uploaded nothing.
 ifneq (,$(findstring android,$(platform)))
-	ANDROID_API ?= 21
+	# 24, not 21: bionic's pthread_barrier_* - which the bundled libuv uses -
+	# arrive there, and so does openpty.
+	ANDROID_API ?= 24
 	ANDROID_NDK_LLVM ?= $(NDK_ROOT)/toolchains/llvm/prebuilt/linux-x86_64
 	# PTR64 is deliberately left alone on the ARM ABIs: MAME turns it into
 	# ARCHITECTURE=_x64/_x86 and would go looking for an x86 target, which is
