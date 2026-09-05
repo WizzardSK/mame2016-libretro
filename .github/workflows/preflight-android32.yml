@@ -1,0 +1,28 @@
+# Fork-only: the 32-bit Android ABIs, which the CI does not build.
+name: preflight (android 32-bit)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - preflight-**
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [android-arm, android-x86]
+    name: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: what .libretro-android-make runs
+        run: |
+          export NDK_ROOT=$ANDROID_NDK_LATEST_HOME
+          export ANDROID_NDK_ROOT="${NDK_ROOT}"
+          export ANDROID_NDK_LLVM="${NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64"
+          export ANDROID_NDK_CLANG="${ANDROID_NDK_LLVM}"
+          make -f Makefile.libretro -j$(nproc) platform=${{ matrix.platform }}
+      - run: ls -l mame2016_libretro_android.so && file mame2016_libretro_android.so
