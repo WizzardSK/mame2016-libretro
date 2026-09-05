@@ -164,7 +164,10 @@ ifneq (,$(findstring android,$(platform)))
 		PTR64 = 1
 	endif
 	ANDROID_CC = $(ANDROID_NDK_LLVM)/bin/$(ANDROID_TRIPLE)$(ANDROID_API)-clang
-	ANDROID_OVERRIDES = OVERRIDE_CC="$(ANDROID_CC)" OVERRIDE_CXX="$(ANDROID_CC)++" OVERRIDE_AR="$(ANDROID_NDK_LLVM)/bin/llvm-ar"
+	# CROSS_BUILD keeps the host compiler for the tools MAME builds and runs
+	# during the build - m68kmake and friends - and gives GENie the NDK's for
+	# everything that ends up in the core.
+	ANDROID_OVERRIDES = CROSS_BUILD=1 OVERRIDE_CC="$(ANDROID_CC)" OVERRIDE_CXX="$(ANDROID_CC)++" OVERRIDE_AR="$(ANDROID_NDK_LLVM)/bin/llvm-ar"
 	CORE_SUFFIX = _android
 endif
 
