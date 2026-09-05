@@ -184,7 +184,10 @@ ifneq (,$(findstring android,$(platform)))
 	# CROSS_BUILD keeps the host compiler for the tools MAME builds and runs
 	# during the build - m68kmake and friends - and gives GENie the NDK's for
 	# everything that ends up in the core.
-	ANDROID_OVERRIDES = CROSS_BUILD=1 $(ANDROID_ARCH_FLAGS) LDOPTS="-L$(ANDROID_STUB_DIR)" OVERRIDE_CC="$(ANDROID_CC)" OVERRIDE_CXX="$(ANDROID_CC)++" OVERRIDE_AR="$(ANDROID_NDK_LLVM)/bin/llvm-ar"
+	# And src/osd/retro/android-shim comes first on the include path, so its
+	sys/ucontext.h is found ahead of the NDK's.
+	ANDROID_SHIM_DIR = $(CURDIR)/src/osd/retro/android-shim
+	ANDROID_OVERRIDES = CROSS_BUILD=1 $(ANDROID_ARCH_FLAGS) ARCHOPTS="-I$(ANDROID_SHIM_DIR)" LDOPTS="-L$(ANDROID_STUB_DIR)" OVERRIDE_CC="$(ANDROID_CC)" OVERRIDE_CXX="$(ANDROID_CC)++" OVERRIDE_AR="$(ANDROID_NDK_LLVM)/bin/llvm-ar"
 	CORE_SUFFIX = _android
 endif
 
