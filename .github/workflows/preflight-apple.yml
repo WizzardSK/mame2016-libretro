@@ -1,0 +1,50 @@
+name: preflight (iOS/tvOS)
+on: [push, workflow_dispatch]
+
+jobs:
+  apple:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: ios-arm64,  core: mame2016_libretro_ios.dylib,  vtool: IOS }
+          - { platform: tvos-arm64, core: mame2016_libretro_tvos.dylib, vtool: TVOS }
+    runs-on: macos-15
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - run: uname -a; clang --version | head -n1
+      - name: build, with the variables the buildbot job sets
+        env:
+          platform: ${{ matrix.platform }}
+          CC: clang
+          CXX: clang++
+        run: make -f Makefile.libretro platform=${{ matrix.platform }} -j$(sysctl -n hw.ncpu) > build.log 2>&1 || (tail -n 80 build.log; exit 1)
+      - name: the core is arm64 and stamped for the right platform
+        run: |
+          ls -la ${{ matrix.core }}
+          lipo -info ${{ matrix.core }} | grep -q arm64
+          vtool -show ${{ matrix.core }} | grep -E 'platform|minos' || true
+          vtool -show ${{ matrix.core }} | grep -q '${{ matrix.vtool }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log-${{ matrix.platform }}
+          path: build.log
+
+  # armv7 cannot be built here at all - Xcode 14 dropped it, and the runners
+  # have 15 and 16 - so this checks the wiring the ios9 job depends on: that
+  # the makefile hands GENie the 32-bit arm target and not the arm64 one.
+  ios9-wiring:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: what the ios9 job would run
+        run: |
+          make -f Makefile.libretro -n platform=ios9 2>/dev/null | head -n 3 | tee dry.txt
+          grep -q -- '-arch armv7' dry.txt
+          grep -q -- '-miphoneos-version-min=9.0' dry.txt
+          grep -q 'PLATFORM=arm ' dry.txt
+          grep -q 'PTR64=0' dry.txt
+          grep -q 'LIBRETRO_CPU="arm"' dry.txt
+          echo "ios9 flags are what GENie needs"
