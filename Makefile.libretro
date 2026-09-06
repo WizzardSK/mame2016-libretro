@@ -221,8 +221,12 @@ else ifneq (,$(filter ios-arm64 tvos-arm64,$(platform)))
 	# CROSS_BUILD keeps the host compiler for the tools MAME builds and runs
 	# during the build - m68kmake and friends - and gives GENie the target
 	# flags for everything that ends up in the core.
+	# -fno-builtin-memrchr: clang's loop-idiom pass rewrites the backwards
+	# search in plaparse.cpp into a memrchr call, and that one is not in the
+	# iOS or tvOS libSystem at these deployment targets - "Undefined symbols
+	# for architecture arm64: _memrchr".
 	APPLE_OVERRIDES = CROSS_BUILD=1 ARCHITECTURE= NOASM=1 PLATFORM=arm64 \
-		ARCHOPTS="$(APPLE_TARGET)" LDOPTS="$(APPLE_TARGET)" \
+		ARCHOPTS="$(APPLE_TARGET) -fno-builtin-memrchr" LDOPTS="$(APPLE_TARGET)" \
 		OVERRIDE_CC="clang" OVERRIDE_CXX="clang++"
 endif
 
